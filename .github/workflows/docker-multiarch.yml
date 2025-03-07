@@ -72,8 +72,10 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           # List all tags ending with "-edge" and delete them
-          EDGE_TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/" | jq -r '.results[] | select(.name | test("-edge$")) | .name')
+          EDGE_TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/" \
+            -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}" | jq -r '.results[] | select(.name | test("-edge$")) | .name')
           for tag in $EDGE_TAGS; do
             echo "Removing ${REPO}:${tag} from Docker Hub"
-            curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${tag}/"
+            curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${tag}/" \
+              -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}"
           done
