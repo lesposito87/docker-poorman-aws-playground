@@ -62,3 +62,12 @@ jobs:
           push: true
           tags: ${{ env.TAGS }}
           platforms: linux/amd64,linux/arm64
+
+      # Remove -edge tags once merged to main
+      - name: Remove -edge tag once merged to main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          EDGE_TAG="${REPO}:${NEW_TAG}-edge"
+          echo "Removing ${EDGE_TAG} from Docker Hub"
+          docker rmi $EDGE_TAG || true
+          curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${NEW_TAG}-edge/"
