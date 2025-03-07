@@ -4,10 +4,10 @@ ARG TERRAFORM_VERSION=1.11
 ARG ANSIBLE_VERSION=11.3.0
 
 # Stage 1: Packer
-FROM hashicorp/packer:${PACKER_VERSION} as packer
+FROM hashicorp/packer:${PACKER_VERSION} AS packer
 
 # Stage 2: Terraform
-FROM hashicorp/terraform:${TERRAFORM_VERSION} as terraform
+FROM hashicorp/terraform:${TERRAFORM_VERSION} AS terraform
 
 # Stage 3: Final Image with All Binaries
 FROM debian:bookworm-slim
@@ -16,7 +16,7 @@ FROM debian:bookworm-slim
 ARG ANSIBLE_VERSION
 
 # Install dependencies (including Python and Pip for Ansible)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   unzip \
   wget \
