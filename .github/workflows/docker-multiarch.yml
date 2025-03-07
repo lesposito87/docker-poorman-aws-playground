@@ -37,16 +37,17 @@ jobs:
           MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
           PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
 
-          # Increment patch version
-          NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-
-          # Set tag based on branch
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
-          else
+          # Increment patch version for non-main branches
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
             echo "TAGS=$REPO:$NEW_TAG-edge" >> $GITHUB_ENV
+          else
+            # For the main branch, just increment the version properly
+            NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
+            echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
           fi
+
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -58,16 +59,15 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile 
+          file: ./Dockerfile
           push: true
           tags: ${{ env.TAGS }}
           platforms: linux/amd64,linux/arm64
 
-      # Remove -edge tags once merged to main
+      # Remove -edge tag once merged to main
       - name: Remove -edge tag once merged to main
         if: github.ref == 'refs/heads/main'
         run: |
           EDGE_TAG="${REPO}:${NEW_TAG}-edge"
           echo "Removing ${EDGE_TAG} from Docker Hub"
-          docker rmi $EDGE_TAG || true
           curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${NEW_TAG}-edge/"
