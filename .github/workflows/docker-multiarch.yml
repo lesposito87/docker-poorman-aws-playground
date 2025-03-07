@@ -25,6 +25,7 @@ jobs:
       - name: Get Latest Tag from Docker Hub & Increment
         id: tag
         run: |
+          # Get the latest tag from Docker Hub
           LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/?page_size=1" | jq -r '.results | map(select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | sort_by(.name | split(".") | map(tonumber)) | last | .name')
 
           # If no tags exist, default to 0.0.0
@@ -37,16 +38,19 @@ jobs:
           MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
           PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
 
-          # Increment patch version
-          NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-
-          # Set tag based on branch
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
+          # Logic for generating tag
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            # Use short commit hash for non-main branches (with -edge suffix)
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+            NEW_TAG="${COMMIT_HASH}-edge"
+            echo "TAGS=$REPO:$NEW_TAG" >> $GITHUB_ENV
           else
-            echo "TAGS=$REPO:$NEW_TAG-edge" >> $GITHUB_ENV
+            # For the main branch, increment the patch version
+            NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
+            echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
           fi
+
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -58,16 +62,18 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile 
+          file: ./Dockerfile
           push: true
           tags: ${{ env.TAGS }}
           platforms: linux/amd64,linux/arm64
 
-      # Remove -edge tags once merged to main
-      - name: Remove -edge tag once merged to main
+      # Remove all -edge tags once merged to main
+      - name: Remove all "-edge" tags once merged to main
         if: github.ref == 'refs/heads/main'
         run: |
-          EDGE_TAG="${REPO}:${NEW_TAG}-edge"
-          echo "Removing ${EDGE_TAG} from Docker Hub"
-          docker rmi $EDGE_TAG || true
-          curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${NEW_TAG}-edge/"
+          # List all tags ending with "-edge" and delete them
+          EDGE_TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/" | jq -r '.results[] | select(.name | test("-edge$")) | .name')
+          for tag in $EDGE_TAGS; do
+            echo "Removing ${REPO}:${tag} from Docker Hub"
+            curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${tag}/"
+          done

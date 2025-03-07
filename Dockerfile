@@ -37,3 +37,4 @@ COPY --from=terraform /bin/terraform /usr/local/bin/terraform
 RUN chmod +x /usr/local/bin/packer /usr/local/bin/terraform
 
 CMD ["bash"]
+
