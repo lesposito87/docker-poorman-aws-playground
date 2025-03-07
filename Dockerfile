@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy the binaries from the previous stages
 COPY --from=packer /usr/local/bin/packer /usr/local/bin/packer
-COPY --from=terraform /usr/local/bin/terraform /usr/local/bin/terraform
+COPY --from=terraform /bin/terraform /usr/local/bin/terraform
 COPY --from=ansible /usr/local/bin/ansible /usr/local/bin/ansible
 
 # Make sure the binaries are executable
