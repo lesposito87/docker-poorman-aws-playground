@@ -26,7 +26,7 @@ jobs:
         id: tag
         run: |
           # Get the latest tag from Docker Hub
-          LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/?page_size=1" | jq -r '.results | map(select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | sort_by(.name | split(".") | map(tonumber)) | last | .name')
+          LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/?page_size=100" | jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -n 1)
 
           # If no tags exist, default to 0.0.0
           if [[ "$LATEST_TAG" == "null" || -z "$LATEST_TAG" ]]; then
