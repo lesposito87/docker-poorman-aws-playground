@@ -33,7 +33,7 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
         curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"; \
     fi && \
     unzip awscliv2.zip && \
-    sudo ./aws/install && \
+    ./aws/install && \
     rm -rf awscliv2.zip
 
 # Install Ansible
