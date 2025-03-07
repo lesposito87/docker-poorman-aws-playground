@@ -10,7 +10,7 @@ FROM hashicorp/packer:${PACKER_VERSION} as packer
 FROM hashicorp/terraform:${TERRAFORM_VERSION} as terraform
 
 # Stage 3: Final Image with All Binaries
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Define the same ARG variables again for use in this final stage
 ARG ANSIBLE_VERSION
