@@ -29,9 +29,8 @@ jobs:
       - name: Set repository variable
         run: echo "REPO=lesposito87/poorman-aws-playground" >> $GITHUB_ENV
 
-      # Dockerfile validation only for pull requests
+      # Dockerfile validation on both push for pull-requests events
       - name: Validate Dockerfile
-        if: github.event_name == 'pull_request'
         run: |
           echo "Validating Dockerfile..."
           docker build --no-cache -f Dockerfile .
