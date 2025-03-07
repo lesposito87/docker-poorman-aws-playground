@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Ansible
-RUN pip3 install --no-cache-dir ansible==${ANSIBLE_VERSION}
+RUN pip3 install --no-cache-dir --break-system-packages ansible==${ANSIBLE_VERSION}
 
 # Copy the binaries from the previous stages
 COPY --from=packer /bin/packer /usr/local/bin/packer
