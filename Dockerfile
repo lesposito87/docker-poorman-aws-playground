@@ -74,18 +74,18 @@ COPY --from=terragrunt /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 # Make sure the binaries are executable
 RUN chmod +x /usr/local/bin/packer /usr/local/bin/terraform /usr/local/bin/terragrunt /usr/local/bin/aws /usr/local/bin/kubectl
 
-# Create "poorman" user and group (UID:GID 1000)
 RUN groupadd -g 1000 poorman && \
     useradd -m -u 1000 -g 1000 -s /bin/bash poorman
 
-# Create and set up the working directory
 RUN mkdir -p /poorman-aws-playground && \
     chown -R poorman:poorman /poorman-aws-playground
 
-# Set working directory
+RUN mkdir -p /home/poorman/.kube && \
+    chown -R poorman:poorman /home/poorman/.kube && \
+    chmod 700 /home/poorman/.kube
+
 WORKDIR /poorman-aws-playground
 
-# Switch to the non-root user
 USER poorman
 
 CMD ["bash"]
