@@ -49,4 +49,14 @@ COPY --from=terragrunt /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 # Make sure the binaries are executable
 RUN chmod +x /usr/local/bin/packer /usr/local/bin/terraform /usr/local/bin/terragrunt /usr/local/bin/aws
 
+RUN groupadd -g 1000 poorman && \
+    useradd -m -u 1000 -g 1000 -s /bin/bash poorman
+
+RUN mkdir -p /poorman-aws-playground && \
+    chown -R poorman:poorman /poorman-aws-playground
+
+WORKDIR /poorman-aws-playground
+
+USER poorman
+
 CMD ["bash"]
