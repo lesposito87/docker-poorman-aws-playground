@@ -3,6 +3,7 @@ ARG PACKER_VERSION=1.12
 ARG TERRAGRUNT_VERSION=1.10.3
 ARG ANSIBLE_VERSION=11.3.0
 ARG AWS_CLI_VERSION=2.24.19
+ARG KUBECTL_VERSION=1.32.0
 
 # Stage 1: Packer
 FROM hashicorp/packer:${PACKER_VERSION} AS packer
@@ -16,6 +17,7 @@ FROM debian:bookworm-slim
 # Define the same ARG variables again for use in this final stage
 ARG ANSIBLE_VERSION
 ARG AWS_CLI_VERSION
+ARG KUBECTL_VERSION
 
 # Install dependencies (including Python and Pip for Ansible)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,14 +31,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI version based on architecture (amd64 or arm64)
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" -o "awscliv2.zip"; \
-    elif [ "$(uname -m)" = "aarch64" ]; then \
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${AWS_CLI_VERSION}.zip" -o "awscliv2.zip"; \
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        AWS_ARCH="linux-x86_64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        AWS_ARCH="linux-aarch64"; \
+    else \
+        echo "[ERROR] Unsupported architecture: $ARCH"; exit 1; \
     fi && \
+    curl -sSL "https://awscli.amazonaws.com/awscli-exe-${AWS_ARCH}-${AWS_CLI_VERSION}.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
-    ./aws/install && \
-    rm -rf awscliv2.zip
+    ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli && \
+    rm -rf awscliv2.zip aws/
+
+# Verify AWS CLI version
+RUN aws --version
+
+# Install kubectl for both amd64 and arm64
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        KUBECTL_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        KUBECTL_ARCH="arm64"; \
+    else \
+        echo "[ERROR] Unsupported architecture: $ARCH"; exit 1; \
+    fi && \
+    curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/kubectl
+
+# Verify kubectl version
+RUN kubectl version --client --output=yaml
 
 # Install Ansible
 RUN pip3 install --no-cache-dir --break-system-packages ansible==${ANSIBLE_VERSION}
@@ -47,16 +72,20 @@ COPY --from=terragrunt /bin/terraform /usr/local/bin/terraform
 COPY --from=terragrunt /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 
 # Make sure the binaries are executable
-RUN chmod +x /usr/local/bin/packer /usr/local/bin/terraform /usr/local/bin/terragrunt /usr/local/bin/aws
+RUN chmod +x /usr/local/bin/packer /usr/local/bin/terraform /usr/local/bin/terragrunt /usr/local/bin/aws /usr/local/bin/kubectl
 
+# Create "poorman" user and group (UID:GID 1000)
 RUN groupadd -g 1000 poorman && \
     useradd -m -u 1000 -g 1000 -s /bin/bash poorman
 
+# Create and set up the working directory
 RUN mkdir -p /poorman-aws-playground && \
     chown -R poorman:poorman /poorman-aws-playground
 
+# Set working directory
 WORKDIR /poorman-aws-playground
 
+# Switch to the non-root user
 USER poorman
 
 CMD ["bash"]
