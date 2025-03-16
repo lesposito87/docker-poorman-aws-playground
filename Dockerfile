@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-pip \
   git \
   openssh-client \
-  netcat \
+  netcat-openbsd \
   && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI version based on architecture (amd64 or arm64)
