@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 \
   python3-pip \
   git \
+  openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI version based on architecture (amd64 or arm64)
