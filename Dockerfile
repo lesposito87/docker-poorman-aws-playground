@@ -20,7 +20,7 @@ ARG AWS_CLI_VERSION
 ARG KUBECTL_VERSION
 
 # Install dependencies (including Python and Pip for Ansible)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && apt-get update && apt-get install -y --no-install-recommends \
   curl \
   unzip \
   wget \
@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   git \
   openssh-client \
   netcat-openbsd \
+  tzdata \
   && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI version based on architecture (amd64 or arm64)
@@ -63,9 +64,6 @@ RUN ARCH=$(uname -m) && \
     curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
     chmod +x kubectl && \
     mv kubectl /usr/local/bin/kubectl
-
-# Verify kubectl version
-RUN kubectl version --client --output=yaml
 
 # Install Ansible
 RUN pip3 install --no-cache-dir --break-system-packages ansible==${ANSIBLE_VERSION}
