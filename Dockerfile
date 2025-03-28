@@ -20,7 +20,7 @@ ARG AWS_CLI_VERSION
 ARG KUBECTL_VERSION
 
 # Install dependencies (including Python and Pip for Ansible)
-RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   unzip \
   wget \
@@ -32,7 +32,6 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime && apt-get update && apt-get i
   git \
   openssh-client \
   netcat-openbsd \
-  tzdata \
   && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI version based on architecture (amd64 or arm64)
