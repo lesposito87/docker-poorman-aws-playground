@@ -92,3 +92,4 @@ WORKDIR /poorman-aws-playground
 USER poorman
 
 CMD ["bash"]
+
