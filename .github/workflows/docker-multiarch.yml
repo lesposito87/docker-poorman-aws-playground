@@ -33,7 +33,6 @@ jobs:
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
-        if: env.BUILD_IMAGE == 'true'
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
