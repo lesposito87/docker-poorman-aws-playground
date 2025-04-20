@@ -31,15 +31,33 @@ jobs:
       - name: Set repository variable
         run: echo "REPO=lesposito87/poorman-aws-playground" >> $GITHUB_ENV
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Determine tag and build condition
         id: determine_tag
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.action }}" != "closed" ]]; then
             TAG="pr-${{ github.event.pull_request.number }}"
             echo "TAGS=$REPO:$TAG" >> $GITHUB_ENV
-            echo "PR_TAG=$TAG" >> $GITHUB_ENV
             echo "BUILD_IMAGE=true" >> $GITHUB_ENV
+
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Extract PR number from merge commit message (e.g. "Merge pull request #123 from branch")
+            PR_NUMBER=$(git log -1 --pretty=%B | grep -oE '#[0-9]+' | tr -d '#')
+
+            # Remove PR image tag if PR number was found
+            if [[ -n "$PR_NUMBER" ]]; then
+              PR_TAG="pr-$PR_NUMBER"
+              echo "Removing PR image tag $REPO:$PR_TAG from Docker Hub"
+              curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${PR_TAG}/" \
+                -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}"
+            fi
+
+            # Determine new version tag
             LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/?page_size=100" | jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -n 1)
             [[ "$LATEST_TAG" == "null" || -z "$LATEST_TAG" ]] && LATEST_TAG="1.0.0"
             MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
@@ -48,16 +66,10 @@ jobs:
             NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
             echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
             echo "BUILD_IMAGE=true" >> $GITHUB_ENV
+
           else
             echo "BUILD_IMAGE=false" >> $GITHUB_ENV
           fi
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        if: env.BUILD_IMAGE == 'true'
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push multi-arch image
         if: env.BUILD_IMAGE == 'true'
@@ -69,9 +81,10 @@ jobs:
           tags: ${{ env.TAGS }}
           platforms: linux/amd64,linux/arm64
 
-      - name: Remove PR image tag on PR close (merged or not)
-        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+      - name: Remove PR image tag on PR close (if not merged)
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false
         run: |
+          REPO=lesposito87/poorman-aws-playground
           TAG="pr-${{ github.event.pull_request.number }}"
           echo "Removing PR image tag $REPO:$TAG from Docker Hub"
           curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${TAG}/" \
