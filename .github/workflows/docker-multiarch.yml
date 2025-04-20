@@ -3,17 +3,21 @@ name: Build and Push Multi-Arch "poorman-aws-playground" Docker Image
 on:
   push:
     branches:
-      - main
+      - '**'
 
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
+      - closed
+    branches:
+      - '**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -27,38 +31,36 @@ jobs:
       - name: Set repository variable
         run: echo "REPO=lesposito87/poorman-aws-playground" >> $GITHUB_ENV
 
-      - name: Validate Dockerfile
+      - name: Determine tag and build condition
+        id: determine_tag
         run: |
-          echo "Validating Dockerfile..."
-          docker build --no-cache -f Dockerfile .
-
-      - name: Define Docker tags
-        id: tag
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            TAG=pr-${{ github.event.pull_request.number }}
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.action }}" != "closed" ]]; then
+            TAG="pr-${{ github.event.pull_request.number }}"
             echo "TAGS=$REPO:$TAG" >> $GITHUB_ENV
-          else
-            # Get the latest semver tag from Docker Hub
+            echo "PR_TAG=$TAG" >> $GITHUB_ENV
+            echo "BUILD_IMAGE=true" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             LATEST_TAG=$(curl -s "https://hub.docker.com/v2/repositories/$REPO/tags/?page_size=100" | jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -n 1)
-            if [[ "$LATEST_TAG" == "null" || -z "$LATEST_TAG" ]]; then
-              LATEST_TAG="0.0.0"
-            fi
+            [[ "$LATEST_TAG" == "null" || -z "$LATEST_TAG" ]] && LATEST_TAG="1.0.0"
             MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
             MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
             PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
             NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
             echo "TAGS=$REPO:$NEW_TAG,$REPO:latest" >> $GITHUB_ENV
-            echo "PR_TAG=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+            echo "BUILD_IMAGE=true" >> $GITHUB_ENV
+          else
+            echo "BUILD_IMAGE=false" >> $GITHUB_ENV
           fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
+        if: env.BUILD_IMAGE == 'true'
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push multi-arch image
+        if: env.BUILD_IMAGE == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -67,11 +69,10 @@ jobs:
           tags: ${{ env.TAGS }}
           platforms: linux/amd64,linux/arm64
 
-      - name: Delete PR image after merge
-        if: github.ref == 'refs/heads/main'
+      - name: Remove PR image tag on PR close (merged or not)
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
         run: |
-          if [[ -n "${{ env.PR_TAG }}" ]]; then
-            echo "Removing PR image tag $REPO:${{ env.PR_TAG }}"
-            curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${{ env.PR_TAG }}/" \
-              -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}"
-          fi
+          TAG="pr-${{ github.event.pull_request.number }}"
+          echo "Removing PR image tag $REPO:$TAG from Docker Hub"
+          curl -X DELETE "https://hub.docker.com/v2/repositories/$REPO/tags/${TAG}/" \
+            -H "Authorization: Bearer ${{ secrets.DOCKERHUB_TOKEN }}"
