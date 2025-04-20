@@ -3,7 +3,7 @@ name: Build and Push Multi-Arch "poorman-aws-playground" Docker Image
 on:
   push:
     branches:
-      - '**'
+      - main  # Only trigger on push to main
 
   pull_request:
     types:
@@ -12,7 +12,7 @@ on:
       - reopened
       - closed
     branches:
-      - '**'
+      - '**'  # All PRs allowed from any branch
 
 jobs:
   build:
