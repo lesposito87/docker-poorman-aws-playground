@@ -32,7 +32,7 @@ jobs:
         run: echo "REPO=lesposito87/poorman-aws-playground" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
