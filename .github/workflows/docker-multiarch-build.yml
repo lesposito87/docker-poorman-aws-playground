@@ -1,0 +1,9 @@
+jobs:
+  docker-multiarch-build:
+    uses: lesposito87/github-workflows/docker-multiarch-build.yml@v1.0.0
+    with:
+      docker_repo: lesposito87/poorman-aws-playground
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
