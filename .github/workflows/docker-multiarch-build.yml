@@ -15,7 +15,7 @@ on:
 
 jobs:
   docker-multiarch-build:
-    uses: lesposito87/github-workflows/.github/workflows/docker-multiarch-build.yml@v1.0.7
+    uses: lesposito87/github-workflows/.github/workflows/docker-multiarch-build.yml@v1.0.11
     with:
       docker_repo: lesposito87/poorman-aws-playground
     secrets:
